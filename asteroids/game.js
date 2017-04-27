@@ -94,8 +94,6 @@ Sprite = function () {
 
   this.children = {};
 
-  this.color    = 'black';
-  this.solid    = false;
   this.visible  = false;
   this.reap     = false;
   this.bridgesH = true;
@@ -235,9 +233,6 @@ Sprite = function () {
       this.children[child].draw();
     }
 
-    this.context.strokeStyle = this.color;
-    this.context.fillStyle = this.color;
-
     this.context.beginPath();
 
     this.context.moveTo(this.points[0], this.points[1]);
@@ -249,9 +244,6 @@ Sprite = function () {
 
     this.context.closePath();
     this.context.stroke();
-    if (this.solid) {
-      this.context.fill();
-    }
   };
   this.findCollisionCanidates = function () {
     if (!this.visible || !this.currentNode) return [];
@@ -379,12 +371,7 @@ Ship = function () {
               0, -11,
               6,   7]);
 
-  this.color = 'navy';
-  this.solid = true;
-
   this.children.exhaust = new Sprite();
-  this.children.exhaust.solid = true;
-  this.children.exhaust.color = 'red';
   this.children.exhaust.init("exhaust",
                              [-3,  6,
                                0, 11,
@@ -420,7 +407,7 @@ Ship = function () {
       this.delayBeforeBullet -= delta;
     }
     if (KEY_STATUS.space) {
-      if (this.delayBeforeBullet <= 0) { this.delayBeforeBullet = 10;
+      if (this.delayBeforeBullet <= 0) {
         for (var i = 0; i < this.bullets.length; i++) {
           if (!this.bullets[i].visible) {
             SFX.laser();
@@ -660,8 +647,6 @@ Asteroid = function () {
               -4, -10,
               -4,  -5]);
 
-  this.color = 'lightgray';
-  this.solid = true;
   this.visible = true;
   this.scale = 6;
   this.postMove = this.wrapPostMove;
@@ -674,7 +659,7 @@ Asteroid = function () {
     this.scale /= 3;
     if (this.scale > 0.5) {
       // break into fragments
-      for (var i = 0; i < 2; i++) {
+      for (var i = 0; i < 3; i++) {
         var roid = $.extend(true, {}, this);
         roid.vel.x = Math.random() * 6 - 3;
         roid.vel.y = Math.random() * 6 - 3;
@@ -709,7 +694,6 @@ Explosion = function () {
   this.draw = function () {
     if (this.visible) {
       this.context.save();
-      this.context.strokeStyle = 'red';
       this.context.lineWidth = 1.0 / this.scale;
       this.context.beginPath();
       for (var i = 0; i < 5; i++) {
@@ -1111,8 +1095,6 @@ $(function () {
   extraDude.children = [];
 
   var i, j = 0;
-
-  var paused = false;
   var showFramerate = false;
   var avgFramerate = 0;
   var frameCount = 0;
@@ -1122,22 +1104,6 @@ $(function () {
   var thisFrame;
   var elapsed;
   var delta;
-
-  var canvasNode = canvas[0];
-
-  // shim layer with setTimeout fallback
-  // from here:
-  // http://paulirish.com/2011/requestanimationframe-for-smart-animating/
-  window.requestAnimFrame = (function () {
-    return  window.requestAnimationFrame       ||
-            window.webkitRequestAnimationFrame ||
-            window.mozRequestAnimationFrame    ||
-            window.oRequestAnimationFrame      ||
-            window.msRequestAnimationFrame     ||
-            function (/* function */ callback, /* DOMElement */ element) {
-              window.setTimeout(callback, 1000 / 60);
-            };
-  })();
 
   var mainLoop = function () {
     context.clearRect(0, 0, Game.canvasWidth, Game.canvasHeight);
@@ -1199,15 +1165,9 @@ $(function () {
       avgFramerate = frameCount;
       frameCount = 0;
     }
-
-    if (paused) {
-      Text.renderText('PAUSED', 72, Game.canvasWidth/2 - 160, 120);
-    } else {
-      requestAnimFrame(mainLoop, canvasNode);
-    }
   };
 
-  mainLoop();
+  var mainLoopId = setInterval(mainLoop, 25);
 
   $(window).keydown(function (e) {
     switch (KEY_CODES[e.keyCode]) {
@@ -1215,11 +1175,13 @@ $(function () {
         showFramerate = !showFramerate;
         break;
       case 'p': // pause
-        paused = !paused;
-        if (!paused) {
-          // start up again
+        if (mainLoopId) {
+          clearInterval(mainLoopId);
+          mainLoopId = null;
+          Text.renderText('PAUSED', 72, Game.canvasWidth/2 - 160, 120);
+        } else {
           lastFrame = Date.now();
-          mainLoop();
+          mainLoopId = setInterval(mainLoop, 10);
         }
         break;
       case 'm': // mute
